@@ -85,10 +85,17 @@ public class NominaService(FondoNetDbContext db, INominaParser parser) : INomina
     /// <summary>Si el ahorrador dado de baja tiene saldo a favor, genera su RETIRO por baja laboral (igual que el paso 7 del seed).</summary>
     private async Task LiquidarPorBajaAsync(Ahorrador ahorrador, DateOnly fechaBaja, CancellationToken ct)
     {
-        decimal saldo = await db.MovimientosAhorro
+        decimal saldoBd = await db.MovimientosAhorro
             .Where(m => m.AhorradorId == ahorrador.Id && m.Fecha <= fechaBaja)
             .SumAsync(m => (decimal?)m.Monto, ct) ?? 0m;
 
+        decimal saldoEnMemoria = db.ChangeTracker.Entries<MovimientoAhorro>()
+            .Where(e => e.State == EntityState.Added
+                     && e.Entity.AhorradorId == ahorrador.Id
+                     && e.Entity.Fecha <= fechaBaja)
+            .Sum(e => e.Entity.Monto);
+
+        decimal saldo = saldoBd + saldoEnMemoria;
         if (saldo > 0m)
         {
             db.MovimientosAhorro.Add(new MovimientoAhorro

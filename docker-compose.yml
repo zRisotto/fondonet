@@ -55,6 +55,9 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:5000
       ConnectionStrings__DefaultConnection: "Server=mariadb;Port=3306;Database=fondonet;User=fondonet_user;Password=fondonet_password;"
+      Jwt__Issuer: "FondoNet"
+      Jwt__Audience: "FondoNetClient"
+      Jwt__Key: "FondoNet_Clave_Secreta_Desarrollo_2026_Min32Bytes!"
     ports:
       - "5000:5000"
     depends_on:

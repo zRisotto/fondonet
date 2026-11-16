@@ -47,7 +47,7 @@ docker-compose.yml  README.md  docs/{PROYECTO.md,PLAN.md}
 - Interés sobre saldo insoluto, tasa parametrizable 1%–2% mensual, cobro vía layout de nómina.
 - Ahorro voluntario: sin aportación patronal, sí genera rendimientos.
 - Bolsa = intereses cobrados en el año. Reparto: `factor = Σ(saldo diario × días) / 365`; `rendimiento = factor / Σfactores × bolsa`.
-- Importación de nómina `.csv`/`.xlsx`: `ClaveEmpleado, Fecha, TipoMovimiento (ALTA|BAJA|INCAPACIDAD|LICENCIA), SalarioBase`; actualiza el estatus del ahorrador.
+- Importación de nómina `.csv`/`.xlsx`: `ClaveEmpleado, Fecha, TipoMovimiento (ALTA|BAJA|INCAPACIDAD|LICENCIA), SalarioBase`; actualiza el estatus del ahorrador (`ALTA` solo reactiva empleados ya registrados en la caja; si la clave no existe se reporta como error del renglón).
 - Layouts de salida: incidencias de nómina y dispersión SPEI (ver campos en `docs/PROYECTO.md`).
 - Multiempresa: `Empresa` → `CajaAhorro` → `Ahorrador`.
 

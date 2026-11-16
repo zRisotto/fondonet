@@ -1,3 +1,4 @@
+using FondoNet.Application.Auth;
 using FondoNet.Application.Cierre;
 using FondoNet.Application.Layouts;
 using FondoNet.Application.Nomina;
@@ -16,6 +17,7 @@ public static class DependencyInjection
         services.AddDbContext<FondoNetDbContext>(options =>
             options.UseMySql(connectionString, new MariaDbServerVersion(new Version(11, 8, 0))));
 
+        services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IPrestamoService, PrestamoService>();
         services.AddSingleton<INominaParser, NominaParser>();
         services.AddScoped<INominaService, NominaService>();
