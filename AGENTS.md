@@ -51,6 +51,14 @@ docker-compose.yml  README.md  docs/{PROYECTO.md,PLAN.md}
 - Layouts de salida: incidencias de nómina y dispersión SPEI (ver campos en `docs/PROYECTO.md`).
 - Multiempresa: `Empresa` → `CajaAhorro` → `Ahorrador`.
 
+## Decisiones de modelo
+- El ciclo de ahorro se liquida cada año: al 31/dic hay un `RETIRO` por el saldo total (ahorro + patronal + rendimientos) de cada ahorrador activo; el saldo arranca en 0 el 1/ene. Los préstamos no se descuentan del retiro.
+- `PATRONAL` es 1:1 con `ORDINARIO` y cuenta para el saldo. `VOLUNTARIO` no tiene patronal.
+- Préstamos: cuota fija quincenal; tasa quincenal = tasa mensual / 2; interés sobre saldo insoluto.
+- Los préstamos cruzan el año: siguen corriendo en el ciclo siguiente aunque el ahorro se haya liquidado.
+- `salario_base` es mensual.
+- Tope del 80% se mide contra el saldo del ciclo vigente a la fecha de solicitud.
+
 ## Datos semilla (Sprint 2)
 - Mínimo 5 ahorradores, movimientos quincenales del año anterior (cerrado) y el actual (activo).
 - Mínimo 2 préstamos activos, 1 liquidado y 1 baja laboral.

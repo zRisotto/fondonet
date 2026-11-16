@@ -74,12 +74,17 @@ ORDER BY fecha, ahorrador_id, tipo;
 
 -- ---------------------------------------------------------------------
 -- 3. Préstamos
---    Validación 80% sobre (ordinario + voluntario) a la fecha de otorgamiento:
---    1 Ana     2025-06-30  10,000  (ahorro 14,640 -> tope 11,712)  LIQUIDADO
---    2 Sofía   2025-05-15   5,000  (ahorro  7,200 -> tope  5,760)  LIQUIDADO
---    3 Carlos  2026-05-15  15,000  (ahorro 29,040 -> tope 23,232)  ACTIVO
---    4 Lucía   2026-03-15  40,000  (ahorro 20,700 -> tope 16,560)  ACTIVO, requiere aval (Carlos)
---    5 Jorge   2026-02-15  30,000  (ahorro 60,750 -> tope 48,600)  ACTIVO
+--    El ciclo se liquida cada año (paso 6b): los préstamos de 2026 se
+--    validan contra el saldo acumulado SOLO desde el 1/ene/2026.
+--    Tope = 80% del saldo a la fecha de solicitud. Los montos se eligieron
+--    para cumplir tanto con saldo total (incl. PATRONAL) como con el criterio
+--    estricto ordinario + voluntario:
+--    1 Ana     2025-06-30  10,000  (tope 80% > monto)                 LIQUIDADO
+--    2 Sofía   2025-05-15   5,000  (tope 80% > monto)                 LIQUIDADO
+--    3 Carlos  2026-05-15   6,000  (tope 80%: 12,672 / 6,336 estricto) ACTIVO
+--    4 Lucía   2026-03-15   6,000  (tope 80%:  6,000 / 3,600 estricto) ACTIVO, requiere aval (Carlos)
+--    5 Jorge   2026-02-15   5,000  (tope 80%:  8,400 / 5,400 estricto) ACTIVO
+--    El de Lucía excede el tope en ambos criterios -> requiere_aval = TRUE.
 --    estatus, saldo_insoluto y fecha_liquidacion se recalculan en el paso 5.
 -- ---------------------------------------------------------------------
 INSERT INTO prestamos
@@ -87,9 +92,9 @@ INSERT INTO prestamos
      estatus, saldo_insoluto, requiere_aval, aval_ahorrador_id) VALUES
     (1, 1, '2025-06-30', 10000.00, 0.0150, 12, 'ACTIVO', 10000.00, FALSE, NULL),
     (2, 5, '2025-05-15',  5000.00, 0.0120, 12, 'ACTIVO',  5000.00, FALSE, NULL),
-    (3, 2, '2026-05-15', 15000.00, 0.0150, 18, 'ACTIVO', 15000.00, FALSE, NULL),
-    (4, 3, '2026-03-15', 40000.00, 0.0150, 48, 'ACTIVO', 40000.00, TRUE,  2),
-    (5, 4, '2026-02-15', 30000.00, 0.0120, 24, 'ACTIVO', 30000.00, FALSE, NULL);
+    (3, 2, '2026-05-15',  6000.00, 0.0150, 18, 'ACTIVO',  6000.00, FALSE, NULL),
+    (4, 3, '2026-03-15',  6000.00, 0.0150, 24, 'ACTIVO',  6000.00, TRUE,  2),
+    (5, 4, '2026-02-15',  5000.00, 0.0120, 24, 'ACTIVO',  5000.00, FALSE, NULL);
 
 -- ---------------------------------------------------------------------
 -- 4. Amortizaciones sobre saldo insoluto (cuota fija quincenal)
@@ -223,11 +228,29 @@ WHERE monto > 0
 ORDER BY ahorrador_id;
 
 -- ---------------------------------------------------------------------
--- 7. Baja laboral: liquidación del saldo total a la fecha de baja
+-- 6b. Liquidación del ciclo 2025: RETIRO por el saldo total (ahorro +
+--     patronal + rendimientos) de cada ahorrador activo al 31/dic/2025.
+--     Deja el saldo en 0. Los préstamos NO se descuentan del retiro.
+-- ---------------------------------------------------------------------
+INSERT INTO movimientos_ahorro (ahorrador_id, fecha, tipo, monto, concepto)
+SELECT a.id, @fin_anterior, 'RETIRO', -SUM(m.monto),
+       CONCAT('Liquidación del ciclo ', YEAR(@fin_anterior))
+FROM ahorradores a
+JOIN movimientos_ahorro m ON m.ahorrador_id = a.id AND m.fecha <= @fin_anterior
+WHERE a.fecha_ingreso <= @fin_anterior
+  AND (a.fecha_baja IS NULL OR a.fecha_baja > @fin_anterior)
+GROUP BY a.id
+HAVING SUM(m.monto) > 0
+ORDER BY a.id;
+
+-- ---------------------------------------------------------------------
+-- 7. Baja laboral (2026): RETIRO por el saldo acumulado desde el 1/ene/2026
+--    (el ciclo 2025 ya se liquidó en 6b, por lo que no se duplica).
 -- ---------------------------------------------------------------------
 INSERT INTO movimientos_ahorro (ahorrador_id, fecha, tipo, monto, concepto)
 SELECT a.id, a.fecha_baja, 'RETIRO', -SUM(m.monto), 'Liquidación por baja laboral'
 FROM ahorradores a
 JOIN movimientos_ahorro m ON m.ahorrador_id = a.id AND m.fecha <= a.fecha_baja
 WHERE a.fecha_baja IS NOT NULL
-GROUP BY a.id, a.fecha_baja;
+GROUP BY a.id, a.fecha_baja
+HAVING SUM(m.monto) > 0;
