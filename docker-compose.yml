@@ -1,0 +1,99 @@
+services:
+  mariadb:
+    image: mariadb:11
+    container_name: fondonet-mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: rootpassword
+      MARIADB_DATABASE: fondonet
+      MARIADB_USER: fondonet_user
+      MARIADB_PASSWORD: fondonet_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./db:/docker-entrypoint-initdb.d:ro
+    networks:
+      - fondonet-net
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  trino:
+    image: trinodb/trino:440
+    container_name: fondonet-trino
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./trino/etc/config.properties:/etc/trino/config.properties:ro
+      - ./trino/etc/jvm.config:/etc/trino/jvm.config:ro
+      - ./trino/etc/node.properties:/etc/trino/node.properties:ro
+      - ./trino/etc/catalog/mariadb.properties:/etc/trino/catalog/mariadb.properties:ro
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - fondonet-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/v1/info | grep -q '\"starting\":false'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fondonet-backend
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5000
+      ConnectionStrings__DefaultConnection: "Server=mariadb;Port=3306;Database=fondonet;User=fondonet_user;Password=fondonet_password;"
+    ports:
+      - "5000:5000"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - fondonet-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: fondonet-frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: http://localhost:5000
+    ports:
+      - "5173:5173"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - fondonet-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:5173/ > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+networks:
+  fondonet-net:
+    driver: bridge
+
+volumes:
+  mariadb_data:
