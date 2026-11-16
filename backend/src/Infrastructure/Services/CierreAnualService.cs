@@ -33,6 +33,9 @@ public class CierreAnualService(FondoNetDbContext db) : ICierreAnualService
         if (anio < 2000 || anio > 2100)
             throw new ReglaNegocioException("El año del ejercicio no es válido.");
 
+        if (!simulacion && anio >= DateTime.Today.Year)
+            throw new ReglaNegocioException($"No se puede ejecutar el cierre definitivo del ejercicio {anio} porque el año aún no ha concluido. Use el modo simulación.");
+
         DateOnly inicio = new(anio, 1, 1);
         DateOnly fin = new(anio, 12, 31);
 

@@ -1,3 +1,4 @@
+using FondoNet.Application.Common;
 using FondoNet.Domain.Entities;
 using FondoNet.Domain.Enums;
 using FondoNet.Domain.Finance;
@@ -134,5 +135,19 @@ public class CierreAnualServiceTests
         Assert.Equal(691.31m, segundo.TotalRendimientos);
         Assert.Equal(totalMovimientosTrasPrimero, await db.MovimientosAhorro.CountAsync());
         Assert.Equal(2, await db.CierresAnuales.CountAsync(c => c.Anio == 2025));
+    }
+
+    [Fact]
+    public async Task Cierre_real_de_anio_en_curso_es_rechazado_pero_simulacion_si_permite()
+    {
+        using var db = CrearDbContextConDatos2025();
+        var service = new CierreAnualService(db);
+        int anioEnCurso = DateTime.Today.Year;
+
+        await Assert.ThrowsAsync<ReglaNegocioException>(() =>
+            service.EjecutarAsync(anioEnCurso, simulacion: false));
+
+        var sim = await service.EjecutarAsync(anioEnCurso, simulacion: true);
+        Assert.True(sim.Simulacion);
     }
 }
