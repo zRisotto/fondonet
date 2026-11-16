@@ -17,6 +17,8 @@ public class FondoNetDbContext(DbContextOptions<FondoNetDbContext> options) : Db
     public DbSet<MovimientoAhorro> MovimientosAhorro => Set<MovimientoAhorro>();
     public DbSet<Prestamo> Prestamos => Set<Prestamo>();
     public DbSet<Amortizacion> Amortizaciones => Set<Amortizacion>();
+    public DbSet<Usuario> Usuarios => Set<Usuario>();
+    public DbSet<CierreAnual> CierresAnuales => Set<CierreAnual>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -65,6 +67,20 @@ public class FondoNetDbContext(DbContextOptions<FondoNetDbContext> options) : Db
             e.ToTable("amortizaciones");
             e.HasIndex(x => new { x.PrestamoId, x.NumeroPago }).IsUnique();
             e.HasOne(x => x.Prestamo).WithMany(x => x.Amortizaciones).HasForeignKey(x => x.PrestamoId);
+        });
+
+        modelBuilder.Entity<Usuario>(e =>
+        {
+            e.ToTable("usuarios");
+            e.HasIndex(x => x.NombreUsuario).IsUnique();
+            e.HasOne(x => x.Ahorrador).WithMany().HasForeignKey(x => x.AhorradorId);
+        });
+
+        modelBuilder.Entity<CierreAnual>(e =>
+        {
+            e.ToTable("cierres_anuales");
+            e.HasIndex(x => new { x.CajaAhorroId, x.Anio }).IsUnique();
+            e.HasOne(x => x.CajaAhorro).WithMany().HasForeignKey(x => x.CajaAhorroId);
         });
 
         // Convenciones globales: columnas snake_case y dinero DECIMAL(18,2).
