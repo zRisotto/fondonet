@@ -1,3 +1,4 @@
+using FondoNet.Application.Ahorradores;
 using FondoNet.Application.Auth;
 using FondoNet.Application.Cierre;
 using FondoNet.Application.Layouts;
@@ -19,6 +20,7 @@ public static class DependencyInjection
 
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IPrestamoService, PrestamoService>();
+        services.AddScoped<IAhorradorService, AhorradorService>();
         services.AddSingleton<INominaParser, NominaParser>();
         services.AddScoped<INominaService, NominaService>();
         services.AddScoped<ICierreAnualService, CierreAnualService>();
